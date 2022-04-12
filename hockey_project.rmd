@@ -1,0 +1,197 @@
+---
+title: "Mini Project 3 - Spatial Mini Project"
+author: "Zefan Qian, Tom Liu"
+output: github_document
+bibliography: Library.bib
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error=TRUE)
+library(dplyr)
+library(tidymodels)
+library(tidyverse)
+library(tidyr)
+library(ggplot2)
+library(lubridate)
+library(stringr)
+library(ggplot2)
+library(readr)
+library(broom)
+library(knitr)
+library(rpart.plot)
+library(splines)
+library(glmnet)
+library(tidymodels) 
+library(googlesheets4)
+library(vip)
+library(ranger)
+library(purrr)
+library(probably)
+library(ggpubr) 
+library(factoextra) 
+library(forcats)
+library(sf) #install.packages('sf')
+library(spdep) #install.packages('spdep')
+conflicted::conflict_prefer("vi", "vip")
+
+set.seed(1013)
+tidymodels_prefer()
+olyn <- read_csv("pxp_womens_oly_2022_v2.csv")
+women <- read_csv("hackathon_womens.csv")
+nwhl <- read_csv("hackathon_nwhl.csv")
+```
+
+
+## Introduction
+
+Ice hockey is one of the fastest and most complex team sports in the world. However, the complexity of ice hockey is not adequately reflected in the performance diagnostic and the relationship between off-ice and on-ice performance is unclear. Consequently, the internal validity and the ability to predict on-ice performance for the majority of nonspecific office tests is insufficient. [@Rene_position_2013].
+
+In order to secure a goal, two pivotal aspects should be considered. Firstly, how is the overall skill of a player? Do they exhibit mastery of the ball, such that it will follow their movement? Secondly, how is the position of the goal, as well as the series of movements before the goal was made? In other words, if the ball is served with haste or the attempts to goal is faced with imminent threat, then will it be less likely to score than a somewhat planned attack? And are there any other characteristics of the goals exhibited by the data? We will use techniques in machine learning and correlated data modelling to answer our questions.
+
+
+
+```{r, echo=FALSE}
+women_pca <- select_if(women,is.numeric)
+women_pca <- women_pca %>% drop_na()
+head(women_pca)
+pca_out <- prcomp(women_pca, center = TRUE, scale = TRUE)
+
+fviz_eig(pca_out)
+plot(get_eig(pca_out)$cumulative.variance.percent)
+fviz_pca_var(pca_out, repel = TRUE)
+
+var_explained <- (pca_out %>% pluck('sdev'))^2
+pve <- var_explained/sum(var_explained)
+
+var_data <- tibble(
+    PC = seq_len(length(var_explained)),
+    var_explained = var_explained,
+    pve = pve
+)
+    
+# Construct scree plots
+p1 <- var_data %>%
+    ggplot(aes(x = PC, y = pve)) +
+    geom_point() + 
+    geom_line() + 
+    labs(x = 'Principal Component', y = 'Proportion of varinace explained') +
+    theme_classic()
+
+p2 <- var_data %>%
+    ggplot(aes(x = PC, y = cumsum(pve))) +
+    geom_point() + 
+    geom_line() + 
+    labs(x = 'Principal Component', y = 'Cumulative proportion of variance explained') +
+    theme_classic()
+
+ggarrange(p1, p2)
+```
+## Data
+
+Describe the data source and the data itself. 
+
+Describe the variables of interest and how they were measured.
+
+
+We first perform principal component analysis on the data, after removing the categorical variables as well as dropping the . Principal component analysis (PCA) is the process of computing the principal components and using them to perform a change of basis on the data, or even use only the first few principal components and ignoring the rest. Generally speaking, principal component vectors represent the directions of the data that explain a maximal amount of variance, that is to say, the lines that capture most information of the data. Each PC vector is a linear combination of the variables.The first eigenvector in the front (denoted as PC1) explains the most variation, and all subsequent PCs explain less variation.
+
+
+```{r}
+spooner_passes = olyn %>%
+  filter(event == "Play") %>%
+  filter(player_name == "Natalie Spooner")
+
+
+
+## CREATING NEW VARIABLES ##
+
+# Find pass distances
+pass_data = olyn %>%
+  filter(event == "Play") %>%
+  mutate(pass_distance = sqrt((x_coord - x_coord_2)^2 + (y_coord - y_coord_2)^2))
+
+
+pass_counts = olyn %>%
+  filter(event == "Play") %>%
+  group_by(player_name) %>%
+  count()
+
+
+# What was their completion rate on these passes?
+pass_counts = olyn %>%
+  filter(event == "Play") %>%
+  mutate(event_successful = ifelse(event_successful == "t", TRUE, FALSE)) %>%
+  group_by(player_name) %>%
+  summarize(event_successful = mean(event_successful), count = n())
+
+
+## PLOTTING THE DATA ##
+
+# # Install packages to run the plot_rink function if you haven't already
+ install.packages("ggforce")
+ install.packages("cowplot")
+
+
+# Source in function to create the rink plot in ggplot
+source("OTTHAC_Tutorial/Code/plot_rink.R")
+
+
+# Let's plot Alina Muller's shots throughout the 2022 olynpics
+muller_shots = olyn %>%
+  filter(event %in% c("Shot", "Goal")) %>%
+  filter(player_name == "Alina Muller") %>%
+  mutate(event_successful = ifelse(event_successful == "t", "Goal", "Shot"))
+
+plot_rink(ggplot(muller_shots)) +
+  geom_point(aes(x = x_coord, y = y_coord, fill = event_successful), shape = 21, size = 3.5)
+
+
+# What if we return to Natalie Spooner's passes, can we plot that?
+plot_rink(ggplot(spooner_passes)) +
+  geom_segment(aes(x = x_coord, xend = x_coord_2, y = y_coord, yend = y_coord_2, colour = situation_type), alpha = 0.6, arrow = arrow(length = unit(0.07, "inches")))
+
+
+
+
+```
+
+
+
+
+## Methods
+
+Describe and justify the statistical methods used in enough detail that the analysis could be replicated, citing original authors for methods and R packages used. Describe model selection process and criteria used to evaluate models. [@dempster_maximum_1977]
+
+```{r results = "hide"}
+#read in data
+#clean data
+```
+
+## Results
+
+Tables, graphics, and statistics, Oh my!
+
+Talk about the results, but don't tie it to your main question/topic.
+
+
+
+Stick to facts and observations.
+
+## Conclusions
+
+Connect and hypothesize about results in larger context. Talk about what you learn about the topic from your results.
+
+Discuss limitations of methods.
+
+
+## Acknowledgements
+
+Thank individuals who helped make this work possible. 
+
+To do the references, build a Bibtex file (.bib) by creating a New File (text file) in RStudio and Save as Library.bib. It is the easiest to use Google Scholar to get the entries for the Bibtex file. Look for quotes and press Bibtex. Copy and past into a .bib file. Check out Bibliographic Information at https://en.wikipedia.org/wiki/BibTeX. 
+
+Check out how to include citations into Rmarkdown files at this site: https://rmarkdown.rstudio.com/authoring_bibliographies_and_citations.html
+
+
+
+## References

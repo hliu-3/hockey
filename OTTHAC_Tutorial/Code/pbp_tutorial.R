@@ -2,7 +2,7 @@
 ## SET UP ##
 
 # Load the data directly from github
-olympic_data = read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/pxp_womens_oly_2022_v2.csv")
+olyn = read.csv("https://raw.githubusercontent.com/bigdatacup/Big-Data-Cup-2021/main/pxp_womens_oly_2022_v2.csv")
 
 
 # Load the tidyverse, a set of packages that can help with data cleaning and analysis in R
@@ -14,19 +14,19 @@ library(tidyverse)
 ## SELECTING COLUMNS AND FINDING DISTINCT ROWS ##
 
 # What types of events are available?
-olympic_data %>% 
+olyn%>% 
   select(event) %>% 
   distinct()
 
 # Same code, without the pipe :(
-distinct(select(olympic_data, event))
+
 
 
 
 ## FILTERING TO CERTAIN EVENTS ##
 
 # Natalie Spooner passes
-spooner_passes = olympic_data %>%
+spooner_passes = olyn%>%
   filter(event == "Play") %>%
   filter(player_name == "Natalie Spooner")
 
@@ -35,7 +35,7 @@ spooner_passes = olympic_data %>%
 ## CREATING NEW VARIABLES ##
 
 # Find pass distances
-pass_data = olympic_data %>%
+pass_data = olyn%>%
   filter(event == "Play") %>%
   mutate(pass_distance = sqrt((x_coord - x_coord_2)^2 + (y_coord - y_coord_2)^2))
 
@@ -44,14 +44,14 @@ pass_data = olympic_data %>%
 ## AGGREGATING DATA ##
 
 # How many passes did each player make?
-pass_counts = olympic_data %>%
+pass_counts = olyn%>%
   filter(event == "Play") %>%
   group_by(player_name) %>%
   count()
 
 
 # What was their completion rate on these passes?
-pass_counts = olympic_data %>%
+pass_counts = olyn%>%
   filter(event == "Play") %>%
   mutate(event_successful = ifelse(event_successful == "t", TRUE, FALSE)) %>%
   group_by(player_name) %>%
@@ -70,7 +70,7 @@ source("Code/plot_rink.R")
 
 
 # Let's plot Alina Muller's shots throughout the 2022 Olympics
-muller_shots = olympic_data %>%
+muller_shots = olyn%>%
   filter(event %in% c("Shot", "Goal")) %>%
   filter(player_name == "Alina Muller") %>%
   mutate(event_successful = ifelse(event_successful == "t", "Goal", "Shot"))
